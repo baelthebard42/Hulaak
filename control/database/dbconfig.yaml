@@ -1,0 +1,6 @@
+development:
+  dialect: postgres
+  datasource: host=localhost dbname=postgres user=${DB_USER} password=${DB_PASSWORD} sslmode=require
+  dir: migrations
+  table: migrations # to track migration history, sql-migrate will internally use a table named 'migration'
+  
