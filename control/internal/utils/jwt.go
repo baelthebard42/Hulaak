@@ -6,7 +6,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-func generateJWTKey(subject string, signingKey string) (string, error) {
+func GenerateJWTKey(subject string, signingKey string) (string, error) {
 
 	claims := jwt.RegisteredClaims{
 		Subject:   subject,

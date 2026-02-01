@@ -12,5 +12,6 @@ func RegisterClientUserRoutes(
 
 	return func(mux *http.ServeMux) {
 		mux.HandleFunc("/account", h.CreateAccountHandler)
+		mux.HandleFunc("/login", h.LoginUserHandler)
 	}
 }

@@ -3,6 +3,7 @@ package client_user
 import (
 	"context"
 	"errors"
+	"os"
 
 	"github.com/baelthebard42/Hulaak/control/internal/utils"
 
@@ -46,7 +47,6 @@ func (s *ClientUserService) LoginUser(
 	ctx context.Context,
 	username string,
 	password string,
-	signingKey string,
 ) (string, error) {
 
 	realUser, err := s.repository.GetByUsername(ctx, username)
@@ -58,7 +58,7 @@ func (s *ClientUserService) LoginUser(
 		return "", errors.New("invalid username or password")
 	}
 
-	tokenString, err := utils.generateJWTKey(username, signingKey)
+	tokenString, err := utils.GenerateJWTKey(username, os.Getenv("JWT_KEY"))
 
 	if err != nil {
 		return "", err

@@ -30,6 +30,15 @@ type CreateAccountResponse struct {
 	Username string `json:"username"`
 }
 
+type LoginRequest struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
+
+type LoginResponse struct {
+	Token string `json:"token"`
+}
+
 func (h *ClientUserHandler) CreateAccountHandler(w http.ResponseWriter, r *http.Request) {
 
 	if r.Method != http.MethodPost {
@@ -69,6 +78,41 @@ func (h *ClientUserHandler) CreateAccountHandler(w http.ResponseWriter, r *http.
 
 	w.Header().Set("content-type", "application/json")
 	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(resp)
+
+}
+
+func (h *ClientUserHandler) LoginUserHandler(w http.ResponseWriter, r *http.Request) {
+
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req LoginRequest
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+	defer cancel()
+
+	token, err := h.service.LoginUser(ctx, req.Username, req.Password)
+
+	if err != nil {
+		log.Printf("Failed to login !! %v", err)
+		http.Error(w, "Error logging in", http.StatusBadRequest)
+		return
+	}
+
+	resp := LoginResponse{
+		Token: token,
+	}
+
+	w.Header().Set("content-type", "application/json")
+	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(resp)
 
 }

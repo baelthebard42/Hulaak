@@ -43,7 +43,7 @@ func (r *Repository) GetByUsername(
 	var u User
 	if err := row.Scan(
 		&u.Client_id,
-		&u.Email,
+
 		&u.Password_hash,
 	); err != nil {
 		return nil, err
