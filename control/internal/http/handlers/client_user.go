@@ -107,6 +107,16 @@ func (h *ClientUserHandler) LoginUserHandler(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
+	http.SetCookie(w, &http.Cookie{
+		Name:     "access_token",
+		Value:    token,
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   true,
+		SameSite: http.SameSiteLaxMode,
+		MaxAge:   60 * 60 * 24,
+	})
+
 	resp := LoginResponse{
 		Token: token,
 	}
