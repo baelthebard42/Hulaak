@@ -9,6 +9,7 @@ require (
 	github.com/Masterminds/semver/v3 v3.2.0 // indirect
 	github.com/Masterminds/sprig/v3 v3.2.3 // indirect
 	github.com/armon/go-radix v1.0.0 // indirect
+	github.com/avast/retry-go v3.0.0+incompatible // indirect
 	github.com/bgentry/speakeasy v0.1.0 // indirect
 	github.com/denisenkom/go-mssqldb v0.9.0 // indirect
 	github.com/fatih/color v1.13.0 // indirect
@@ -18,7 +19,7 @@ require (
 	github.com/godror/godror v0.40.4 // indirect
 	github.com/godror/knownpb v0.1.1 // indirect
 	github.com/golang-sql/civil v0.0.0-20190719163853-cb61b32ac6fe // indirect
-	github.com/google/uuid v1.3.0 // indirect
+	github.com/google/uuid v1.6.0 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/huandu/xstrings v1.4.0 // indirect
@@ -35,6 +36,7 @@ require (
 	github.com/olekukonko/tablewriter v0.0.5 // indirect
 	github.com/posener/complete v1.2.3 // indirect
 	github.com/rubenv/sql-migrate v1.8.1 // indirect
+	github.com/segmentio/ksuid v1.0.4 // indirect
 	github.com/shopspring/decimal v1.3.1 // indirect
 	github.com/spf13/cast v1.5.0 // indirect
 	golang.org/x/crypto v0.45.0 // indirect
