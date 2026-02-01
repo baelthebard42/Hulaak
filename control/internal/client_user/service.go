@@ -2,8 +2,10 @@ package client_user
 
 import (
 	"context"
+	"errors"
 
 	"github.com/baelthebard42/Hulaak/control/internal/utils"
+
 	"github.com/google/uuid"
 )
 
@@ -38,4 +40,29 @@ func (s *ClientUserService) CreateAccount(ctx context.Context, username string, 
 
 	return u, nil
 
+}
+
+func (s *ClientUserService) LoginUser(
+	ctx context.Context,
+	username string,
+	password string,
+	signingKey string,
+) (string, error) {
+
+	realUser, err := s.repository.GetByUsername(ctx, username)
+	if err != nil {
+		return "", err
+	}
+
+	if !utils.VerifyPassword(password, realUser.Password_hash) {
+		return "", errors.New("invalid username or password")
+	}
+
+	tokenString, err := utils.generateJWTKey(username, signingKey)
+
+	if err != nil {
+		return "", err
+	}
+
+	return tokenString, nil
 }

@@ -34,7 +34,7 @@ func (r *Repository) GetByUsername(
 
 	row := r.db.QueryRowContext(
 		ctx,
-		`SELECT client_id, client_email, password_hash
+		`SELECT client_id, password_hash
 		 FROM client_user
 		 WHERE client_username = $1`,
 		username,
