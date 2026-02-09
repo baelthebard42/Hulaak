@@ -52,9 +52,9 @@ func RequireAuth(next http.Handler) http.Handler {
 			return
 
 		}
-		username := claims["sub"].(string)
+		userID := claims["sub"].(string)
 
-		ctx := context.WithValue(r.Context(), "username", username)
+		ctx := context.WithValue(r.Context(), "userID", userID)
 
 		next.ServeHTTP(w, r.WithContext(ctx))
 

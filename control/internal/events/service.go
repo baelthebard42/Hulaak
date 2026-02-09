@@ -36,3 +36,9 @@ func (s *EventService) PostEvent(ctx context.Context, event_type string, event_s
 	return e, nil
 
 }
+
+func (s *EventService) PostEndpoint(ctx context.Context, destination_ref string, event_type string, endpoint string) error {
+	err := s.repository.PostEndpoint(ctx, destination_ref, event_type, endpoint)
+
+	return err
+}

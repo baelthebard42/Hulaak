@@ -36,3 +36,18 @@ func (r *Repository) PostEvent(ctx context.Context, e Event) (*Event, error) {
 
 	return &e, nil
 }
+
+func (r *Repository) PostEndpoint(ctx context.Context, destination_ref string, event_type string, endpoint string) error {
+
+	userID := ctx.Value("userID")
+
+	_, err := r.db.ExecContext(ctx,
+		`INSERT INTO endpoints
+		(destination_reference, source, event_type, endpoint_url)
+		VALUES ($1, $2, $3, $4)
+		`,
+		destination_ref, userID, event_type, endpoint,
+	)
+
+	return err
+}
