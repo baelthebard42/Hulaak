@@ -20,7 +20,7 @@ func RequireAuth(next http.Handler) http.Handler {
 
 		if err != nil {
 			log.Println(err)
-			http.Error(w, "Cookie value missing or added incorrectly. The key should be access_token", http.StatusBadRequest)
+			http.Error(w, "Make sure you are logged in before sending events. or, Cookie value missing or added incorrectly. The key should be access_token", http.StatusBadRequest)
 			return
 		}
 

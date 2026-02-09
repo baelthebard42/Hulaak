@@ -58,7 +58,7 @@ func (s *ClientUserService) LoginUser(
 		return "", errors.New("invalid username or password")
 	}
 
-	tokenString, err := utils.GenerateJWTKey(username, os.Getenv("JWT_KEY"))
+	tokenString, err := utils.GenerateJWTKey(realUser.Client_id, os.Getenv("JWT_KEY"))
 
 	if err != nil {
 		return "", err
