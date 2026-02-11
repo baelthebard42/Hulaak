@@ -2,6 +2,8 @@
 
 CREATE TABLE endpoints(
 
+endpoint_id UUID UNIQUE,
+
 destination_reference TEXT NOT NULL,
 source UUID NOT NULL,
 
