@@ -3,6 +3,7 @@ package events
 import (
 	"context"
 	"database/sql"
+	"fmt"
 
 	"github.com/google/uuid"
 )
@@ -38,19 +39,18 @@ func (r *Repository) PostEvent(ctx context.Context, e Event) (*Event, error) {
 
 	err := r.db.QueryRowContext(ctx, `
 	SELECT endpoint_id FROM endpoints
-	WHERE destination_reference=$1, event_type=$2
+	WHERE destination_reference=$1 AND event_type=$2
 	`, e.Event_Destination, e.Event_Type).Scan(&endpointId)
 
 	if err != nil {
-		if err == sql.ErrNoRows {
-			return nil, nil
-		}
+
 		return nil, err
 	}
 
 	tx, err := r.db.BeginTx(ctx, nil)
 
 	if err != nil {
+
 		return nil, err
 	}
 
@@ -73,6 +73,7 @@ func (r *Repository) PostEvent(ctx context.Context, e Event) (*Event, error) {
 	)
 
 	if err != nil {
+
 		return nil, err
 	}
 
@@ -86,6 +87,7 @@ func (r *Repository) PostEvent(ctx context.Context, e Event) (*Event, error) {
 		delivery_id, e.Event_ID, endpointId)
 
 	if err != nil {
+
 		return nil, err
 	}
 
@@ -96,7 +98,12 @@ func (r *Repository) PostEvent(ctx context.Context, e Event) (*Event, error) {
 	`, uuid.New().String(), delivery_id)
 
 	if err != nil {
+
 		return nil, err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return nil, fmt.Errorf("tx commit: %w", err)
 	}
 
 	return &e, nil
@@ -109,10 +116,10 @@ func (r *Repository) PostEndpoint(ctx context.Context, destination_ref string, e
 
 	_, err := r.db.ExecContext(ctx,
 		`INSERT INTO endpoints
-		(destination_reference, source, event_type, endpoint_url)
-		VALUES ($1, $2, $3, $4)
+		(endpoint_id, destination_reference, source, event_type, endpoint_url)
+		VALUES ($1, $2, $3, $4, $5)
 		`,
-		destination_ref, userID, event_type, endpoint,
+		uuid.New().String(), destination_ref, userID, event_type, endpoint,
 	)
 
 	return err
