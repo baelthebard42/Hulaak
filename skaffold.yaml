@@ -1,0 +1,18 @@
+apiVersion: skaffold/v4beta3
+kind: Config
+manifests:
+  rawYaml:
+    - ./infra/k8s/*
+build:
+  local:
+    push: True
+  artifacts:
+    - image: baelthebard42/control
+      context: control
+      docker:
+        dockerfile: Dockerfile
+      sync:
+        manual:
+          - src: "**/*.go"
+            dest: .
+    
