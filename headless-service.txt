@@ -1,0 +1,14 @@
+it is a special type of service that uses no clusterIP, instead provides direct access to pods. It is useful for staeful applications.
+
+So to understand this, let's first understand how a normal service (non headless) works.
+
+When service A needs to request service B, it first has the domain name for service B. So during DNS resolution, the domain name of
+ service B gets resolved into a virtual IP (VIP) representing the cluserIP of service B. Then A requests to that VIP, which is then 
+load balanced into a particular pod of service B through kube proxy. This is the flow when we don't care which pod receives the request.
+
+Now, headless service enables us to communicate with a pod directly. How?
+
+In this scenario, we set the cluserIP of service B to None. This tells kubernetes to not use kube proxy load balancing at all (by pass load balancing). 
+So, during DNS resolution of domain name of service B, instead of getting a VIP of service B, we get the IP addresses of all the pods
+associated with service B. Now, the client chooses which pod to communicate to. This enables statefulness since the client can keep
+track of which pod it is communicating to.
