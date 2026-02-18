@@ -1,6 +1,6 @@
 -- +migrate Up
 
-CREATE TYPE delivery_status AS ENUM(
+CREATE TYPE delivery_status_destination AS ENUM(
   'pending', 'success', 'failed'
 );
 
@@ -9,7 +9,7 @@ CREATE TABLE delivery(
   id UUID UNIQUE PRIMARY KEY,
   event_id UUID,
   endpoint_id UUID,
-  status delivery_status NOT NULL DEFAULT 'pending',
+  status delivery_status_destination NOT NULL DEFAULT 'pending',
   num_attempts INT,
   last_error TEXT,
   last_attempt_at TIMESTAMP,
