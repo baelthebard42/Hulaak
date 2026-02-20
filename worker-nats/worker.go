@@ -4,9 +4,9 @@ import (
 	"encoding/json"
 	"log"
 
-	"github.com/baelthebard42/Hulaak/worker-destination/config"
-	worker_nats "github.com/baelthebard42/Hulaak/worker-destination/nats"
-	"github.com/baelthebard42/Hulaak/worker-destination/utils"
+	"github.com/baelthebard42/Hulaak/worker-nats/config"
+	worker_nats "github.com/baelthebard42/Hulaak/worker-nats/nats"
+	"github.com/baelthebard42/Hulaak/worker-nats/utils"
 )
 
 func main() {

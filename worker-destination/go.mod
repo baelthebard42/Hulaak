@@ -1,4 +1,4 @@
-module github.com/baelthebard42/Hulaak/worker-nats
+module github.com/baelthebard42/Hulaak/worker-destination
 
 go 1.23.0
 
