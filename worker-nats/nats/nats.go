@@ -45,9 +45,10 @@ func (n *NATS) Close() {
 
 func (n *NATS) PublishEvent(subject string, payload json.RawMessage) error {
 
-	_, err := n.js.Publish(subject, payload)
+	ack, err := n.js.Publish(subject, payload)
 
 	log.Println("Sent event:", string(payload))
+	log.Println("Acknowledgement:", ack.Sequence)
 
 	return err
 

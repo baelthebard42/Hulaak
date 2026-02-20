@@ -29,6 +29,8 @@ func main() {
 
 	for {
 
+		log.Println("Claiming batch...")
+
 		delivery_batch, err := utils.ClaimOutboxBatch(postgres)
 
 		if err != nil {
@@ -36,6 +38,8 @@ func main() {
 		}
 
 		//print("Retrieved data: ")
+
+		log.Println("Sending batch...")
 
 		for _, value := range delivery_batch {
 			//	fmt.Printf("type of %v: %T", index, value)
@@ -50,6 +54,12 @@ func main() {
 
 			if err != nil {
 				log.Fatalln("Error sending outbox event to NATS: %v", err)
+			}
+
+			err = utils.MarkAsPublished(postgres, value.Delivery_id)
+
+			if err != nil {
+				panic("Error marking sent messages as sent in database!!!!!")
 			}
 
 		}
