@@ -2,7 +2,7 @@ package worker_nats
 
 import (
 	"encoding/json"
-	"fmt"
+	"log"
 	"time"
 
 	"github.com/nats-io/nats.go"
@@ -14,6 +14,8 @@ type NATS struct {
 }
 
 func NewNATSConnection(connection_string string) (*NATS, error) {
+
+	log.Println("Connecting to NATS client...")
 
 	nc, err := nats.Connect(
 		connection_string,
@@ -31,6 +33,8 @@ func NewNATSConnection(connection_string string) (*NATS, error) {
 		return nil, err
 	}
 
+	log.Println("Worker-NATS successfully connected to NATS client!!")
+
 	return &NATS{conn: nc, js: js}, nil
 
 }
@@ -43,7 +47,7 @@ func (n *NATS) PublishEvent(subject string, payload json.RawMessage) error {
 
 	_, err := n.js.Publish(subject, payload)
 
-	fmt.Println("Sent event:", string(payload))
+	log.Println("Sent event:", string(payload))
 
 	return err
 
