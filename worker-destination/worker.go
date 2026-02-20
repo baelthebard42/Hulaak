@@ -3,14 +3,14 @@ package main
 import (
 	"log"
 
-	//	"github.com/baelthebard42/Hulaak/worker-destination/config"
+	"github.com/baelthebard42/Hulaak/worker-destination/config"
 	worker_nats "github.com/baelthebard42/Hulaak/worker-destination/nats"
 	// "github.com/baelthebard42/Hulaak/worker-destination/utils"
 )
 
 func main() {
 
-	//cfg := config.Load()
+	cfg := config.Load()
 
 	log.Println("Worker-destination initated...")
 
@@ -22,7 +22,7 @@ func main() {
 		return
 	}
 
-	NATS, err := worker_nats.NewNATSConnection("nats://localhost:4222")
+	NATS, err := worker_nats.NewNATSConnection(cfg.NATSConnectionString)
 
 	if err != nil {
 		log.Fatalln("error connecting to NATS client %v", err)
