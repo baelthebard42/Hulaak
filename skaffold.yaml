@@ -15,4 +15,13 @@ build:
         manual:
           - src: "**/*.go"
             dest: .
+
+    - image: baelthebard42/worker-nats
+      context: worker-nats
+      docker:
+        dockerfile: Dockerfile
+      sync:
+        manual:
+          - src: "**/*.go"
+            dest: .
     

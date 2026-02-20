@@ -13,8 +13,9 @@ type Config struct {
 
 func Load() Config {
 	return Config{
-		Port:        getEnv("PORT", "8080"),
-		DatabaseURL: mustGetEnv("DATABASE_URL"),
+		Port:                 getEnv("PORT", "8080"),
+		DatabaseURL:          mustGetEnv("DATABASE_URL"),
+		NATSConnectionString: mustGetEnv("NATS_URL"),
 	}
 }
 

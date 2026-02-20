@@ -54,7 +54,7 @@ spec:
   ports:
     - port: 80 # for this service
       targetPort: 8080 # for this container
-      nodePort: 30007 # for this node (physical/vm)
+      nodePort: 30008 # for this node (physical/vm)
 
 
 
