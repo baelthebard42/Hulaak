@@ -15,15 +15,15 @@ func main() {
 
 	postgres, err := utils.NewDBConnection(cfg.DatabaseURL)
 
+	if err != nil {
+		log.Fatalln("error connecting to database %v", err)
+		return
+	}
+
 	NATS, err := worker_nats.NewNATSConnection(cfg.NATSConnectionString)
 
 	if err != nil {
 		log.Fatalln("error connecting to NATS client %v", err)
-		return
-	}
-
-	if err != nil {
-		log.Fatalln("error connecting to database %v", err)
 		return
 	}
 
