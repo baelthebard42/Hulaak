@@ -68,7 +68,7 @@ func ClaimOutboxBatch(db *sql.DB) ([]Payload, error) {
 		WHERE id IN (
 			SELECT id
 			FROM outbox
-			WHERE published_at IS NULL
+			WHERE published_at IS NULL AND status='null'
 			  
 			ORDER BY created_at
 			FOR UPDATE SKIP LOCKED
@@ -105,6 +105,16 @@ func MarkAsPublished(db *sql.DB, deliveryID string) error {
 		UPDATE outbox
 		SET published_at = NOW(),
 		    status = 'success'
+		WHERE delivery_id = $1
+	`, deliveryID)
+
+	return err
+}
+
+func MarkAsNull(db *sql.DB, deliveryID string) error {
+	_, err := db.Exec(`
+		UPDATE outbox
+		SET status = 'null'
 		WHERE delivery_id = $1
 	`, deliveryID)
 
