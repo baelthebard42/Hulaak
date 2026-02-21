@@ -25,3 +25,12 @@ build:
           - src: "**/*.go"
             dest: .
     
+    - image: baelthebard42/worker-destination
+      context: worker-destination
+      docker:
+        dockerfile: Dockerfile
+      sync:
+        manual:
+          - src: "**/*.go"
+            dest: .
+    

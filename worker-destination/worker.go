@@ -4,26 +4,25 @@ import (
 	"encoding/json"
 	"log"
 
-	//	"github.com/baelthebard42/Hulaak/worker-destination/config"
+	"github.com/baelthebard42/Hulaak/worker-destination/config"
 	worker_nats "github.com/baelthebard42/Hulaak/worker-destination/nats"
 	"github.com/baelthebard42/Hulaak/worker-destination/utils"
-	// "github.com/baelthebard42/Hulaak/worker-destination/utils"
 )
 
 func main() {
 
-	//	cfg := config.Load()
+	cfg := config.Load()
 
 	log.Println("Worker-destination initated...")
 
-	postgres, err := utils.NewDBConnection("postgres://anjal:anjal@localhost:5432/postgres?sslmode=disable")
+	postgres, err := utils.NewDBConnection(cfg.DatabaseURL)
 
 	if err != nil {
 		log.Println("error connecting to database %v", err)
 		return
 	}
 
-	NATS, err := worker_nats.NewNATSConnection("nats://localhost:4222")
+	NATS, err := worker_nats.NewNATSConnection(cfg.NATSConnectionString)
 
 	if err != nil {
 		log.Println("error connecting to NATS client %v", err)

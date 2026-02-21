@@ -1,0 +1,48 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: worker-destination-depl
+spec:
+  replicas: 2
+  selector: # defines which pod the deployment manages
+    matchLabels:
+      app: worker-destination # defining what label of pod to search for
+  template:
+    metadata:
+      labels:
+        app: worker-destination # defining what labels the pod has
+    spec:
+      containers:
+        - name: worker-destination
+          image: baelthebard42/worker-destination:latest
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: db-secrets-hulaak
+                  key: DATABASE_URL
+            - name: NATS_URL
+              value: "http://nats-client:4222"
+          ports:
+            - containerPort: 8080
+          imagePullPolicy: Always
+
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: worker-destination-srv
+spec:
+  type: NodePort
+  selector:
+    app: control
+  ports:
+    - port: 80 # for this service
+      targetPort: 8080 # for this container
+      nodePort: 30009 # for this node (physical/vm)
+
+
+
+
