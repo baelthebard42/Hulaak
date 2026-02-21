@@ -92,13 +92,13 @@ func (n *NATS) EnsureConsumer(streamName string, consumerName string) error {
 			AckPolicy:  nats.AckExplicitPolicy,
 			MaxDeliver: 10,
 			BackOff: []time.Duration{
-				1 * time.Second,
-				2 * time.Second,
-				4 * time.Second,
-				8 * time.Second,
-				16 * time.Second,
-				30 * time.Second,
 				1 * time.Minute,
+				2 * time.Minute,
+				4 * time.Minute,
+				8 * time.Minute,
+				16 * time.Minute,
+				30 * time.Minute,
+				60 * time.Minute,
 			},
 		})
 		return err

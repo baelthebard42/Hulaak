@@ -1,9 +1,12 @@
 package utils
 
 import (
+	"bytes"
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"log"
+	"net/http"
 	"time"
 
 	"github.com/avast/retry-go"
@@ -93,18 +96,23 @@ func FetchDeliveryDetails(db *sql.DB, delivery_id string) (*Webhook, string, err
 
 }
 
-func UpdateAfterRetry(db *sql.DB, delivery_id string) error {
+func UpdateAfterError(db *sql.DB, deliveryID string, errorString string) error {
 
 	_, err := db.Exec(`
 	UPDATE delivery
 	SET 
 		num_attempts = COALESCE(num_attempts, 0) + 1,
-		last_attempt_at = now()
-	WHERE id = $1;
-	`, delivery_id)
+		last_attempt_at = NOW(),
+		last_error = $1,
+		status = CASE 
+			WHEN COALESCE(num_attempts, 0) + 1 >= 10 
+			THEN 'failed'
+			ELSE status
+		END
+	WHERE id = $2;
+	`, errorString, deliveryID)
 
 	return err
-
 }
 
 func UpdateAfterSuccess(db *sql.DB, delivery_id string) error {
@@ -119,5 +127,44 @@ func UpdateAfterSuccess(db *sql.DB, delivery_id string) error {
 	`, delivery_id)
 
 	return err
+
+}
+
+func SendWebhook(webhook Webhook, endpoint string) error {
+
+	payload, err := json.Marshal(webhook)
+
+	if err != nil {
+		log.Println("error converting webhook event to json: %v", err)
+		return err
+	}
+
+	req, err := http.NewRequest("POST", endpoint, bytes.NewBuffer(payload))
+
+	if err != nil {
+		log.Println("error creating HTTP request: %v", err)
+		return err
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{
+		Timeout: 10 * time.Second,
+	}
+
+	resp, err := client.Do(req)
+
+	if err != nil {
+		log.Println("error sending hTTP request: %v", err)
+		return err
+	}
+
+	defer resp.Body.Close()
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return fmt.Errorf("non-success status: %d", resp.StatusCode)
+	}
+
+	return nil
 
 }
