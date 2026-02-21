@@ -2,20 +2,6 @@
 
 Hulaak is an event-driven, authenticated webhook delivery & retry system built on Go. It ingests the events from your applications and sends it to the required destination with **at-least-once** delivery. It makes use of Go's seamless networking with NATS JetStream's persistence, exponential backoff time to ensure the webhooks are retried till the destination receives it. This entire system, comprising of three separate services, is made ready and is well tested to run on a Kubernetes cluster. Check out the infra directory for details regarding the Kubernetes setup.
 
-## Features
-
-- **Separated concerns**: Separate services to handle event ingestion and deliveries (check out the system architecture below!)
-
-- **At-least-once delivery**: Guarentee that the destination will receive the webhooks at least once, given it is setup to listen to them correctly.
-
-- **Status Tracking**: The system exposes necessary details required for the client to track the status of their events including number of attempts, last retry time, last error and so on.
-
-- **Exponential backoff retries** : The time to wait before retrying increases exponentially on each retry, making it convenient if your destination system shuts for a brief period of time.
-
-- **Scalability**: The workers for event processing and deliveries can be increased easily if needed in context of large number of incoming events.
-
-
-
 
 ## Architecture / Flow of Events
 
@@ -50,6 +36,21 @@ Specifically, for each event the JetStream sends to Worker-Destination, the Work
 If the delivery for an event is unsuccessful, the Worker-Destination sends back no acknowledgement for the event. In that case, NATS JetStream is configured to resend the event to Worker-Destination on an exponential backoff basis after which the worker retries the delivery. Meaning for each successive retry, the time to try again increases exponentially from previous.
 
 Note that to ensure there is no perpetual resending of events, a mechanism to stop the retry after a MAXIMUM_RETRIES is implemented. After MAXIMUM_RETRIES, the delivery row is marked as 'failed' and is move to a Dead Letter Queue (DLQ) for manual inspection.
+
+
+## Features
+
+- **Separated concerns**: Separate services to handle event ingestion and deliveries (check out the system architecture below!)
+
+- **At-least-once delivery**: Guarentee that the destination will receive the webhooks at least once, given it is setup to listen to them correctly.
+
+- **Status Tracking**: The system exposes necessary details required for the client to track the status of their events including number of attempts, last retry time, last error and so on.
+
+- **Exponential backoff retries** : The time to wait before retrying increases exponentially on each retry, making it convenient if your destination system shuts for a brief period of time.
+
+- **Scalability**: The workers for event processing and deliveries can be increased easily if needed in context of large number of incoming events.
+
+
 
 
 
