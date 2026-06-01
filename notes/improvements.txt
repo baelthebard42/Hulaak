@@ -1,0 +1,35 @@
+
+Phase 1:
+
+1. Remover Worker-NATS. The worker delivery directly receives the batch of data from control plane via natsjetstream. What publishes the data 
+   to nats jetstream is another thing to look otu.
+
+2. Make the Worker-Destination independent of database
+
+2. Fix the 3 silent bugs afterwards (subject mismatch, JWT key mismatch, SQL syntax error)
+
+3. Add a docker-compose.yml for running Postgres + NATS locally without Kubernetes.
+
+3. Add logging endpoints for events
+
+4. Idempotency Metadata (Very Important) (send which retry this is to user on delivery). 
+
+5. Security: HMAC signing on delivery of webhooks 
+
+
+Phase 2:
+
+
+6. Observability : Implement OpenTelemetry 
+
+7. Testing: Make the system testable, design tests and run them. (Fix the Repository Interface Pattern first)
+
+8. Implement a CI/CD pipeline with gihub actions to deploy with automatic testing.
+
+
+ 
+Phase 3:
+
+ 1. Rate limiting (to events endpoints)
+ 2. Implement deadletter queue table 
+ 3. Multi subscriber support (single sub and multi sub mode)

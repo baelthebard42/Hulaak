@@ -35,12 +35,12 @@ func (r *Repository) PostEvent(ctx context.Context, e Event) (*Event, error) {
 
 	//first check if a corresponding endpoint exists on the database for the event_destination, event_type
 
-	var endpointId string
+	var endpointId, endpoint_url string
 
 	err := r.db.QueryRowContext(ctx, `
-	SELECT endpoint_id FROM endpoints
+	SELECT endpoint_id, endpoint_url FROM endpoints
 	WHERE destination_reference=$1 AND event_type=$2
-	`, e.Event_Destination, e.Event_Type).Scan(&endpointId)
+	`, e.Event_Destination, e.Event_Type).Scan(&endpointId, &endpoint_url)
 
 	if err != nil {
 
@@ -93,9 +93,9 @@ func (r *Repository) PostEvent(ctx context.Context, e Event) (*Event, error) {
 
 	_, err = tx.ExecContext(ctx, `
 	INSERT INTO outbox
-	(id, delivery_id)
+	(id, delivery_id, endpoint, event_source, event_type, payload)
 	VALUES ($1, $2)
-	`, uuid.New().String(), delivery_id)
+	`, uuid.New().String(), delivery_id, endpoint_url, e.Event_Source, e.Event_Type, e.Payload)
 
 	if err != nil {
 

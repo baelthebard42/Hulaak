@@ -36,6 +36,9 @@ spec:
                 secretKeyRef:
                   name: db-secrets-hulaak
                   key: DATABASE_URL
+            
+            - name: NATS_URL
+              value: "http://nats-client:4222"
           ports:
             - containerPort: 8080
           imagePullPolicy: Always
