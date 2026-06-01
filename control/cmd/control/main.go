@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"log"
 	"time"
@@ -13,6 +14,9 @@ import (
 	"github.com/baelthebard42/Hulaak/control/internal/http"
 	"github.com/baelthebard42/Hulaak/control/internal/http/handlers"
 	"github.com/baelthebard42/Hulaak/control/internal/http/routes"
+	control_nats "github.com/baelthebard42/Hulaak/control/internal/nats"
+	"github.com/baelthebard42/Hulaak/control/internal/outbox"
+	"github.com/baelthebard42/Hulaak/control/internal/worker"
 )
 
 func main() {
@@ -51,6 +55,13 @@ func main() {
 		routes.RegisterClientUserRoutes(userHandler),
 		routes.RegisterEventRoutes(eventHandler),
 	)
+
+	outboxRepository := outbox.NewRepository(postgres)
+	NATS, err := control_nats.NewNATSConnection(cfg.NATSConnectionString)
+
+	//starting background process
+	worker := worker.NewRunner(outboxRepository, NATS)
+	worker.Run(context.Background())
 
 	server := http.NewServer(router)
 

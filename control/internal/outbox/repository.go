@@ -1,6 +1,7 @@
 package outbox
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 )
@@ -21,14 +22,14 @@ type WebhookDetails struct {
 	Payload      json.RawMessage `json:"payload"`
 }
 
-func (r *Repository) ClaimOutboxBatch(batch_size int) ([]WebhookDetails, error) {
+func (r *Repository) ClaimOutboxBatch(ctx context.Context, batch_size int) ([]WebhookDetails, error) {
 	tx, err := r.db.Begin()
 	if err != nil {
 		return nil, err
 	}
 	defer tx.Rollback()
 
-	rows, err := tx.Query(`
+	rows, err := tx.QueryContext(ctx, `
 		UPDATE outbox
 		SET status = 'processing'
 		   
@@ -72,11 +73,21 @@ func (r *Repository) ClaimOutboxBatch(batch_size int) ([]WebhookDetails, error) 
 	return deliveries, nil
 }
 
-func (r *Repository) DeleteThisDelivery(deliveryID string) error {
+func (r *Repository) DeleteThisDelivery(ctx context.Context, deliveryID string) error {
 
-	_, err := r.db.Exec(`
+	_, err := r.db.ExecContext(ctx, `
 	DELETE FROM outbox
 	WHERE delivery_id = $1
+	`, deliveryID)
+
+	return err
+}
+
+func (r *Repository) MarkAsUnprocessed(ctx context.Context, deliveryID string) error {
+	_, err := r.db.ExecContext(ctx, `
+		UPDATE outbox
+		SET status = 'unprocessed'
+		WHERE delivery_id = $1
 	`, deliveryID)
 
 	return err
