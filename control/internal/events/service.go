@@ -3,6 +3,7 @@ package events
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 
 	"github.com/google/uuid"
 )
@@ -28,6 +29,7 @@ func (s *EventService) PostEvent(ctx context.Context, event_type string, event_s
 	}
 
 	e, err := s.repository.PostEvent(ctx, *e)
+	fmt.Println("error is: %v", err)
 
 	if err != nil {
 		return nil, err

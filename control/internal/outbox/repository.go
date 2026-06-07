@@ -42,7 +42,7 @@ func (r *Repository) ClaimOutboxBatch(ctx context.Context, batch_size int) ([]We
 			FOR UPDATE SKIP LOCKED
 			LIMIT $1
 		)
-		RETURNING delivery_id, endpoint, event_source, event_type, WebhookDetails
+		RETURNING delivery_id, endpoint, event_source, event_type, payload
 	`, batch_size)
 	if err != nil {
 		return nil, err

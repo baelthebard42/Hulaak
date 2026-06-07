@@ -3,7 +3,7 @@ kind: Deployment
 metadata:
   name: worker-destination-depl
 spec:
-  replicas: 2
+  replicas: 1
   selector: # defines which pod the deployment manages
     matchLabels:
       app: worker-destination # defining what label of pod to search for

@@ -3,7 +3,7 @@ kind: Deployment
 metadata:
   name: control-depl
 spec:
-  replicas: 2
+  replicas: 1
   selector: # defines which pod the deployment manages
     matchLabels:
       app: control # defining what label of pod to search for
@@ -55,8 +55,8 @@ spec:
   selector:
     app: control
   ports:
-    - port: 80 # for this service
-      targetPort: 8080 # for this container
+    - port: 80 # for this service 
+      targetPort: 8080 # for this container or application
       nodePort: 30008 # for this node (physical/vm)
 
 

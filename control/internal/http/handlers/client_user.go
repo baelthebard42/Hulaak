@@ -39,6 +39,23 @@ type LoginResponse struct {
 	Token string `json:"token"`
 }
 
+func (h *ClientUserHandler) HealthzHandler(w http.ResponseWriter, r *http.Request) {
+
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	response := map[string]interface{}{
+		"response": "system is ok",
+	}
+
+	w.Header().Set("content-type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(response)
+
+}
+
 func (h *ClientUserHandler) CreateAccountHandler(w http.ResponseWriter, r *http.Request) {
 
 	if r.Method != http.MethodPost {

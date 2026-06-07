@@ -94,7 +94,7 @@ func (r *Repository) PostEvent(ctx context.Context, e Event) (*Event, error) {
 	_, err = tx.ExecContext(ctx, `
 	INSERT INTO outbox
 	(id, delivery_id, endpoint, event_source, event_type, payload)
-	VALUES ($1, $2)
+	VALUES ($1, $2, $3, $4, $5, $6)
 	`, uuid.New().String(), delivery_id, endpoint_url, e.Event_Source, e.Event_Type, e.Payload)
 
 	if err != nil {

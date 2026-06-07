@@ -54,13 +54,18 @@ func (h *EventHandler) ReceiveEvent(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 	defer cancel()
 
-	userID := ctx.Value("userID")
+	userID, ok := ctx.Value("userID").(string)
+	if !ok || userID == "" {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
 
-	e, err := h.service.PostEvent(ctx, req.Event_Type, userID.(string), req.Event_Destination, req.Payload)
+	e, err := h.service.PostEvent(ctx, req.Event_Type, userID, req.Event_Destination, req.Payload)
 
 	if err != nil {
 		log.Printf("Failed to enter to database: %v", err)
 		http.Error(w, "Error entering event to database, please try again", http.StatusBadRequest)
+		return
 	}
 
 	w.Header().Set("content-type", "application/json")

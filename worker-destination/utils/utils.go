@@ -13,15 +13,12 @@ import (
 	_ "github.com/lib/pq"
 )
 
-type Payload struct {
-	Delivery_id string `json:"delivery_id"`
-}
-
-type Webhook struct {
-	EventID     string          `json:"event_id"`
-	EventType   string          `json:"event_type"`
-	EventSource string          `json:"event_source"`
-	Payload     json.RawMessage `json:"payload"`
+type WebhookDetails struct {
+	Delivery_id  string          `json:"delivery_id"`
+	Event_type   string          `json:"event_type"`
+	Event_source string          `json:"event_source"`
+	Endpoint     string          `json:"endpoint"`
+	Payload      json.RawMessage `json:"payload"`
 }
 
 func NewPostgres(dsn string) (*sql.DB, error) {
@@ -65,72 +62,72 @@ func NewDBConnection(connection_string string) (*sql.DB, error) {
 
 }
 
-func FetchDeliveryDetails(db *sql.DB, delivery_id string) (*Webhook, string, error) {
+// func FetchDeliveryDetails(db *sql.DB, delivery_id string) (*Webhook, string, error) {
 
-	var endpoint string
-	var webhook Webhook
+// 	var endpoint string
+// 	var webhook Webhook
 
-	err := db.QueryRow(`
+// 	err := db.QueryRow(`
 
-    SELECT 
-    events.event_id, 
-    events.event_type, 
-    events.event_source, 
-    events.payload, 
-    endpoints.endpoint_url
-	FROM delivery
-	INNER JOIN events 
-		ON delivery.event_id = events.event_id
-	INNER JOIN endpoints 
-		ON delivery.endpoint_id = endpoints.endpoint_id
-	WHERE delivery.id = $1;
+//     SELECT
+//     events.event_id,
+//     events.event_type,
+//     events.event_source,
+//     events.payload,
+//     endpoints.endpoint_url
+// 	FROM delivery
+// 	INNER JOIN events
+// 		ON delivery.event_id = events.event_id
+// 	INNER JOIN endpoints
+// 		ON delivery.endpoint_id = endpoints.endpoint_id
+// 	WHERE delivery.id = $1;
 
-	`, delivery_id).Scan(&webhook.EventID, &webhook.EventType, &webhook.EventSource, &webhook.Payload, &endpoint)
+// 	`, delivery_id).Scan(&webhook.EventID, &webhook.EventType, &webhook.EventSource, &webhook.Payload, &endpoint)
 
-	if err != nil {
-		log.Fatalln("Unable to retrieve details for delivery %v: %v", delivery_id, err)
-		return nil, "", err
-	}
+// 	if err != nil {
+// 		log.Fatalln("Unable to retrieve details for delivery %v: %v", delivery_id, err)
+// 		return nil, "", err
+// 	}
 
-	return &webhook, endpoint, nil
+// 	return &webhook, endpoint, nil
 
-}
+// }
 
-func UpdateAfterError(db *sql.DB, deliveryID string, errorString string) error {
+// func UpdateAfterError(db *sql.DB, deliveryID string, errorString string) error {
 
-	_, err := db.Exec(`
-	UPDATE delivery
-	SET 
-		num_attempts = COALESCE(num_attempts, 0) + 1,
-		last_attempt_at = NOW(),
-		last_error = $1,
-		status = CASE 
-			WHEN COALESCE(num_attempts, 0) + 1 >= 10 
-			THEN 'failed'
-			ELSE status
-		END
-	WHERE id = $2;
-	`, errorString, deliveryID)
+// 	_, err := db.Exec(`
+// 	UPDATE delivery
+// 	SET
+// 		num_attempts = COALESCE(num_attempts, 0) + 1,
+// 		last_attempt_at = NOW(),
+// 		last_error = $1,
+// 		status = CASE
+// 			WHEN COALESCE(num_attempts, 0) + 1 >= 10
+// 			THEN 'failed'
+// 			ELSE status
+// 		END
+// 	WHERE id = $2;
+// 	`, errorString, deliveryID)
 
-	return err
-}
+// 	return err
+// }
 
-func UpdateAfterSuccess(db *sql.DB, delivery_id string) error {
+// func UpdateAfterSuccess(db *sql.DB, delivery_id string) error {
 
-	_, err := db.Exec(`
-	UPDATE delivery
-	SET 
-		num_attempts = COALESCE(num_attempts, 0) + 1,
-		last_attempt_at = now()
-		status = 'success'
-	WHERE id = $1;
-	`, delivery_id)
+// 	_, err := db.Exec(`
+// 	UPDATE delivery
+// 	SET
+// 		num_attempts = COALESCE(num_attempts, 0) + 1,
+// 		last_attempt_at = now()
+// 		status = 'success'
+// 	WHERE id = $1;
+// 	`, delivery_id)
 
-	return err
+// 	return err
 
-}
+// }
 
-func SendWebhook(webhook Webhook, endpoint string) error {
+func SendWebhook(webhook WebhookDetails) error {
 
 	payload, err := json.Marshal(webhook)
 
@@ -139,7 +136,7 @@ func SendWebhook(webhook Webhook, endpoint string) error {
 		return err
 	}
 
-	req, err := http.NewRequest("POST", endpoint, bytes.NewBuffer(payload))
+	req, err := http.NewRequest("POST", webhook.Endpoint, bytes.NewBuffer(payload))
 
 	if err != nil {
 		log.Println("error creating HTTP request: %v", err)

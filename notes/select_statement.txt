@@ -1,0 +1,4 @@
+select statement allows us to have multiple cases, each of which comprise receiving data from a channel. Select then automatically chooses
+the one which is available first rather than waiting to execute each channel receive sequentially.
+
+Blocking: If no channels are ready, the goroutine sleeps until data is sent or received on one of them.

@@ -1,0 +1,27 @@
+With the system i currently have, there are two major design choices for 
+implementing the retry mechanism:
+
+1. next_retry_at column technique:
+
+Use events from worker dest to control to send if the delivery
+succeeded (the event sending is already there). If it has failed,
+then use the delivery table to track state of delivery (eg number of retries yet, `
+last retry time etc). Then add to the next_retry_at column (this has to be added in the 
+outbox table) the time at which to be retries next. Then when the background worker
+queries, an additional condition would be that current time is greater than next_retry_at time.
+This setup an automatic mechanism for handling retries without any manual 
+intervention or external dependencies.
+
+2. Use NAT jetstream's persistance and ack
+
+NATS jetsrteam has a feature that resends the event to the service
+if an ack is not sent to it. We can even define constraints on at what
+time it should resend the event if ack not sent (eg exponential backoff.) 
+If delivery succeeeds, we  do an ack, if not we don't ack. If not acked,
+the nats keeps sending the same event to worker destination till it acks.
+This is just exploiting abstractions that nats gives us but is really
+handy and simple to implement. It also ensures once the event flies off
+the control service, control will have nothing to do with it, everything will be
+handled by NATS and worker destination.
+
+I will be going with option 2.

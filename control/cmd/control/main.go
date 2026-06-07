@@ -4,6 +4,9 @@ import (
 	"context"
 	"database/sql"
 	"log"
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/avast/retry-go"
@@ -59,14 +62,37 @@ func main() {
 	outboxRepository := outbox.NewRepository(postgres)
 	NATS, err := control_nats.NewNATSConnection(cfg.NATSConnectionString)
 
-	//starting background process
-	worker := worker.NewRunner(outboxRepository, NATS)
-	worker.Run(context.Background())
+	if err != nil {
+		log.Fatalf("Error with NATS: %v", err)
+	}
 
 	server := http.NewServer(router)
 
-	if err := server.Run(); err != nil {
-		log.Fatalf("server error: %v", err)
-	}
+	ctx, cancel := context.WithCancel(context.Background()) //context.Background is parent
+	defer cancel()
 
+	sigCh := make(chan os.Signal, 1)
+
+	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM) // if OS sends SIGINT or SIGTERM, push it to sigch
+
+	go func() {
+		if err := server.Run(); err != nil {
+			log.Printf("server stopped: %v", err)
+			cancel()
+		}
+	}()
+
+	go func() {
+		worker.NewRunner(outboxRepository, NATS).Run(ctx)
+	}()
+
+	// when kubernetes deletes the pod, it sends SIGTERM which is pushed to sigch
+
+	go func() {
+		<-sigCh
+		log.Println("shutdown signal received")
+		cancel()
+	}()
+
+	<-ctx.Done()
 }

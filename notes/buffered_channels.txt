@@ -1,0 +1,6 @@
+in general sending and receiving data into a channel is a blocking operation, the execution stops until the data is received or
+sent in either side. WIth buffered channels, we can define capacity of the channels. Then the blocking will have following cases:
+a. block on sending side only if the channel is full with defined capacity
+b. block on receiving side only if channel is empty
+
+the channel acts as a FIFO queue.

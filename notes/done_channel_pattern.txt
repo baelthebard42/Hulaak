@@ -1,0 +1,11 @@
+In Go (Golang), a done channel is a fundamental concurrency 
+pattern used to signal cancellation or termination across multiple 
+goroutines. It relies on a unique behavior of Go channels: reading 
+from a closed channel never blocks; it immediately returns the zero value.
+By closing a single done channel, you can instantly broadcast a stop signal 
+to an infinite number of listening goroutines, effectively preventing goroutine 
+leaks.
+
+This can be seen in wait group, which allows the main execution thread to continue till all go routines have finished execution.
+This is done via 3 primitives: Add() for increasing go routines count, Done() for decreasing go routines count (used after a go routine ends)
+and finally the Wait() which checks if the number of go routines is 0 or not, if 0, execution ends else it waits.

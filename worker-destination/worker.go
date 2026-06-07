@@ -15,13 +15,6 @@ func main() {
 
 	log.Println("Worker-destination initated...")
 
-	postgres, err := utils.NewDBConnection(cfg.DatabaseURL)
-
-	if err != nil {
-		log.Println("error connecting to database %v", err)
-		return
-	}
-
 	NATS, err := worker_nats.NewNATSConnection(cfg.NATSConnectionString)
 
 	if err != nil {
@@ -48,41 +41,40 @@ func main() {
 		for _, msg := range msgs {
 			log.Println("Received delivery event: %v", string(msg.Data))
 
-			var event utils.Payload
+			var webhook utils.WebhookDetails
 
-			err := json.Unmarshal(msg.Data, &event)
+			err := json.Unmarshal(msg.Data, &webhook)
 
 			if err != nil {
 				log.Println("error marshalling received event: %v", err)
 				continue
 			}
 
-			webhook, endpoint_url, err := utils.FetchDeliveryDetails(postgres, event.Delivery_id)
-
 			if err != nil {
 				log.Println("error fetching delivery details: %v", err)
 				continue
 			}
 
-			err = utils.SendWebhook(*webhook, endpoint_url)
+			//	err = utils.SendWebhook(webhook)
 
 			if err != nil {
 				log.Println("error sending webhook: %v", err)
 
-				err = utils.UpdateAfterError(postgres, event.Delivery_id, err.Error())
+				//	err = utils.UpdateAfterError(postgres, event.Delivery_id, err.Error())
 				if err != nil {
 					log.Println("error updating delivery status: %v", err)
 				}
 				continue
 			}
 
-			err = utils.UpdateAfterSuccess(postgres, event.Delivery_id)
+			//	err = utils.UpdateAfterSuccess(postgres, event.Delivery_id)
 
 			if err != nil {
 				log.Println("error updating delivery status: %v", err)
 				continue
 			}
-			msg.Ack()
+			log.Println("Not acknowledging  event so it is sent back again for retry")
+			//msg.Ack()
 
 		}
 

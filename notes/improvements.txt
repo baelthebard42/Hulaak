@@ -10,26 +10,36 @@ Phase 1:
 
 3. Add a docker-compose.yml for running Postgres + NATS locally without Kubernetes.
 
-3. Add logging endpoints for events
+3. Add state logging endpoints for events
 
-4. Idempotency Metadata (Very Important) (send which retry this is to user on delivery). 
 
-5. Security: HMAC signing on delivery of webhooks 
+
+
 
 
 Phase 2:
 
+5. Security: HMAC signing on delivery of webhooks 
 
-6. Observability : Implement OpenTelemetry 
+4. Idempotency Metadata (Very Important) (send which retry this is to user on delivery). 
+
+6. A basic user interface to view event details of a client user.
+
+
+Phase 3:
+
 
 7. Testing: Make the system testable, design tests and run them. (Fix the Repository Interface Pattern first)
 
 8. Implement a CI/CD pipeline with gihub actions to deploy with automatic testing.
 
 
- 
-Phase 3:
 
- 1. Rate limiting (to events endpoints)
+
+ 
+Phase 4:
+
+ 1. Rate limiting (onlt POST /events endpoint)
  2. Implement deadletter queue table 
  3. Multi subscriber support (single sub and multi sub mode)
+ 6. Observability and Monitoring : Implement OpenTelemetry for statistics, add metrics to user interface

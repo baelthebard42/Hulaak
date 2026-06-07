@@ -2,6 +2,7 @@ package control_nats
 
 import (
 	"encoding/json"
+
 	"log"
 	"time"
 
@@ -10,7 +11,7 @@ import (
 
 type NATS struct {
 	conn *nats.Conn
-	js   nats.JetStreamContext
+	// js   nats.JetStreamContext
 }
 
 func NewNATSConnection(connection_string string) (*NATS, error) {
@@ -53,7 +54,10 @@ func NewNATSConnection(connection_string string) (*NATS, error) {
 
 	log.Println("control successfully connected to NATS client!!")
 
-	return &NATS{conn: nc, js: js}, nil
+	log.Printf("NATS conn: %v", nc != nil)
+	log.Printf("JetStream enabled check: %+v", js)
+
+	return &NATS{conn: nc}, nil
 
 }
 
@@ -62,13 +66,16 @@ func (n *NATS) Close() {
 	return
 }
 
+func (n *NATS) js() (nats.JetStreamContext, error) {
+	return n.conn.JetStream()
+}
+
 func (n *NATS) PublishEvent(subject string, payload json.RawMessage) error {
+	js, err := n.conn.JetStream()
+	if err != nil {
+		return err
+	}
 
-	ack, err := n.js.Publish(subject, payload)
-
-	log.Println("Sent event:", string(payload))
-	log.Println("Acknowledgement:", ack.Sequence)
-
+	_, err = js.Publish(subject, payload)
 	return err
-
 }

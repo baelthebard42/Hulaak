@@ -3,6 +3,7 @@ package worker
 import (
 	"context"
 	"encoding/json"
+
 	"log"
 	"time"
 
@@ -16,12 +17,14 @@ type Runner struct {
 }
 
 func NewRunner(repo *outbox.Repository, nats_conn *control_nats.NATS) *Runner {
-	return &Runner{repo: repo, nats: &control_nats.NATS{}}
+	return &Runner{repo: repo, nats: nats_conn}
 }
 
 func (r *Runner) processJob(ctx context.Context, job outbox.WebhookDetails) {
 
 	job_json, err := json.Marshal(job)
+
+	//fmt.Println("processing this job: %v", string(job_json))
 
 	if err != nil {
 		log.Println("Error converting webhook data to json: %v", err)
@@ -63,15 +66,15 @@ func (r *Runner) processBatch(ctx context.Context, batch_size int) {
 }
 
 func (r *Runner) Run(ctx context.Context) {
-	ticker := time.NewTicker(time.Second)
+	ticker := time.NewTicker(time.Second) // ticker is a channel that receives a value every second
 
 	defer ticker.Stop()
 
 	log.Println("Starting background worker for publishing events from outbox table...")
 
 	for {
-		select {
-		case <-ctx.Done():
+		select { // waits for whichever event happens first
+		case <-ctx.Done(): // shutdown requested i.e cancel() (returned in the main.go) is called
 			return
 
 		case <-ticker.C:
