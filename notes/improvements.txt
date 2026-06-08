@@ -1,12 +1,10 @@
 
 Phase 1:
 
-1. Remover Worker-NATS. The worker delivery directly receives the batch of data from control plane via natsjetstream. What publishes the data 
-   to nats jetstream is another thing to look otu.
+1. Remover Worker-NATS service. The worker delivery should directly receive the batch of data from control plane via natsjetstream. What publishes the data 
+   to nats jetstream is another thing to look otu. (done, works good)
 
-2. Make the Worker-Destination independent of database
-
-2. Fix the 3 silent bugs afterwards (subject mismatch, JWT key mismatch, SQL syntax error)
+2. Make the Worker-Destination independent of database 
 
 3. Add a docker-compose.yml for running Postgres + NATS locally without Kubernetes.
 
@@ -19,7 +17,7 @@ Phase 1:
 
 Phase 2:
 
-5. Security: HMAC signing on delivery of webhooks 
+5. Security: HMAC signing on delivery of webhooks (receiver side )
 
 4. Idempotency Metadata (Very Important) (send which retry this is to user on delivery). 
 

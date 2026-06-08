@@ -1,6 +1,7 @@
 package worker_nats
 
 import (
+	"encoding/json"
 	"log"
 	"time"
 
@@ -9,7 +10,7 @@ import (
 
 type NATS struct {
 	conn *nats.Conn
-	js   nats.JetStreamContext
+	// js   nats.JetStreamContext
 }
 
 func NewNATSConnection(connection_string string) (*NATS, error) {
@@ -44,7 +45,7 @@ func NewNATSConnection(connection_string string) (*NATS, error) {
 		return nil, err
 	}
 
-	js, err := nc.JetStream()
+	//js, err := nc.JetStream()
 
 	if err != nil {
 		return nil, err
@@ -52,7 +53,7 @@ func NewNATSConnection(connection_string string) (*NATS, error) {
 
 	log.Println("Worker-Destination successfully connected to NATS client!!")
 
-	return &NATS{conn: nc, js: js}, nil
+	return &NATS{conn: nc}, nil
 
 }
 
@@ -60,17 +61,22 @@ func (n *NATS) Close() {
 	n.conn.Close()
 }
 
+func (n *NATS) js() (nats.JetStreamContext, error) {
+	return n.conn.JetStream()
+}
+
 func (n *NATS) EnsureStream(streamName string) error {
-	_, err := n.js.StreamInfo(streamName)
+	js, err := n.js()
+	_, err = js.StreamInfo(streamName)
 	if err == nil {
 		return nil
 	}
 
 	if err == nats.ErrStreamNotFound {
 		log.Println("Stream not %v found, creating it...", streamName)
-		_, err = n.js.AddStream(&nats.StreamConfig{
+		_, err = js.AddStream(&nats.StreamConfig{
 			Name:     streamName,
-			Subjects: []string{"webhook_events"},
+			Subjects: []string{"webhook.>"},
 			Storage:  nats.FileStorage,
 		})
 		return err
@@ -80,14 +86,15 @@ func (n *NATS) EnsureStream(streamName string) error {
 }
 
 func (n *NATS) EnsureConsumer(streamName string, consumerName string) error {
-	_, err := n.js.ConsumerInfo(streamName, consumerName)
+	js, err := n.js()
+	_, err = js.ConsumerInfo(streamName, consumerName)
 	if err == nil {
 		return nil
 	}
 
 	if err == nats.ErrConsumerNotFound {
 		log.Println("Consumer not %v found, adding..", streamName)
-		_, err = n.js.AddConsumer(streamName, &nats.ConsumerConfig{
+		_, err = js.AddConsumer(streamName, &nats.ConsumerConfig{
 			Durable:    consumerName,
 			AckPolicy:  nats.AckExplicitPolicy,
 			MaxDeliver: 10,
@@ -109,7 +116,8 @@ func (n *NATS) EnsureConsumer(streamName string, consumerName string) error {
 
 func (n *NATS) SubscribeWithDurableConsumer(subject string, durableConsumerName string, streamName string) (*nats.Subscription, error) {
 
-	err := n.EnsureStream(streamName)
+	js, err := n.js()
+	err = n.EnsureStream(streamName)
 
 	if err != nil {
 		log.Fatalln("Error ensuring stream: %v", err)
@@ -123,7 +131,7 @@ func (n *NATS) SubscribeWithDurableConsumer(subject string, durableConsumerName 
 		return nil, err
 	}
 
-	sub, err := n.js.PullSubscribe(
+	sub, err := js.PullSubscribe(
 		subject,
 		durableConsumerName,
 		nats.BindStream(streamName),
@@ -138,4 +146,14 @@ func (n *NATS) SubscribeWithDurableConsumer(subject string, durableConsumerName 
 
 	return sub, nil
 
+}
+
+func (n *NATS) PublishEvent(subject string, payload json.RawMessage) error {
+	js, err := n.js()
+	if err != nil {
+		return err
+	}
+
+	_, err = js.Publish(subject, payload)
+	return err
 }
