@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/avast/retry-go"
-	"github.com/baelthebard42/Hulaak/worker-destination/events"
+
 	worker_nats "github.com/baelthebard42/Hulaak/worker-destination/nats"
 	_ "github.com/lib/pq"
 )
@@ -121,7 +121,7 @@ func NewDBConnection(connection_string string) (*sql.DB, error) {
 
 // }
 
-func SendWebhook(webhook events.WebhookReceiveEvent) error {
+func SendWebhook(webhook worker_nats.WebhookReceiveEvent) error {
 
 	payload, err := json.Marshal(webhook)
 
@@ -160,12 +160,14 @@ func SendWebhook(webhook events.WebhookReceiveEvent) error {
 
 }
 
-func PublishDeliveryState(webhook events.WebhookReceiveEvent, nats *worker_nats.NATS, success bool) error {
+func PublishDeliveryState(webhook worker_nats.WebhookReceiveEvent, nats *worker_nats.NATS, last_attempt_at string, last_error error) error {
 
-	var event events.DeliveryResultEvent
+	var event worker_nats.DeliveryResultEvent
 
 	event.Delivery_id = webhook.Delivery_id
-	event.Succeeded = success
+	event.Succeeded = last_error == nil
+	event.Last_attempt = last_attempt_at
+	event.Error_message = last_error.Error()
 
 	payload, err := json.Marshal(event)
 

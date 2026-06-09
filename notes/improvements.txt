@@ -8,7 +8,7 @@ Phase 1:
 
 3. Add a docker-compose.yml for running Postgres + NATS locally without Kubernetes.
 
-3. Add state logging endpoints for events
+
 
 
 
@@ -16,6 +16,8 @@ Phase 1:
 
 
 Phase 2:
+
+3. Add state logging endpoints for events (GET event/id results in actual event details from event table, GET /delivery/event/id results in delivery details about an event, GET /events results in all events of the user (limit of 10), one for DLQ too after made)
 
 5. Security: HMAC signing on delivery of webhooks (receiver side )
 

@@ -3,10 +3,12 @@ package main
 import (
 	"encoding/json"
 	"log"
+	"time"
 
 	"github.com/baelthebard42/Hulaak/worker-destination/config"
 	"github.com/baelthebard42/Hulaak/worker-destination/events"
 	worker_nats "github.com/baelthebard42/Hulaak/worker-destination/nats"
+	"github.com/baelthebard42/Hulaak/worker-destination/utils"
 )
 
 func main() {
@@ -55,26 +57,26 @@ func main() {
 				continue
 			}
 
-			//	err = utils.SendWebhook(webhook)
+			last_attempt_at := time.Now()
 
-			if err != nil {
-				log.Println("error sending webhook: %v", err)
+			// Replicates standard PostgreSQL timestamp format (so compatible with other columns denoting time)
+			last_attempt_at_str := last_attempt_at.Format("2006-01-02 15:04:05.000000-07")
 
-				//	err = utils.UpdateAfterError(postgres, event.Delivery_id, err.Error())
-				if err != nil {
-					log.Println("error updating delivery status: %v", err)
-				}
-				continue
-			}
+			delivery_error := utils.SendWebhook(webhook) // sends webhook to destination
 
-			//	err = utils.UpdateAfterSuccess(postgres, event.Delivery_id)
-
+			err = utils.PublishDeliveryState(webhook, NATS, last_attempt_at_str, delivery_error) //need to make this robust (some mechanism to ensure this is sent to NATS later even if the NATS service is down)
 			if err != nil {
 				log.Println("error updating delivery status: %v", err)
+			}
+
+			if delivery_error != nil {
+				log.Println("error sending webhook: %v", err)
 				continue
 			}
-			log.Println("Not acknowledging  event so it is sent back again for retry")
-			//msg.Ack()
+
+			log.Println("Webhook ", webhook.Delivery_id, " sent successfully to destination!!\n")
+
+			msg.Ack() //acknowledgement to NATS that webhook is received by receiver
 
 		}
 

@@ -4,7 +4,9 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log"
 
+	control_nats "github.com/baelthebard42/Hulaak/control/internal/nats"
 	"github.com/google/uuid"
 )
 
@@ -124,3 +126,35 @@ func (r *Repository) PostEndpoint(ctx context.Context, destination_ref string, e
 
 	return err
 }
+
+func (r *Repository) UpdateAfterEvent(ctx context.Context, event control_nats.DeliveryResultEvent) error {
+
+	var status, last_attempt_at string
+	var num_attempts int
+	var new_status string
+
+	err := r.db.QueryRowContext(ctx, `
+	SELECT status, num_attempts, last_attempt_at FROM delivery
+	WHERE id=$1 
+	`, event.Delivery_id).Scan(&status, &num_attempts, &last_attempt_at)
+
+	if err != nil {
+		log.Println("Error updating delivery: ", err)
+		return err
+	}
+
+	if status == "success" { // two more checks to be added here: num attempts >=  event.num_attempts and last attempt > events.last_attempt
+		log.Println("Duplicate event detected, dropping it..")
+		return fmt.Errorf("Duplicate event detected")
+
+	}
+
+	if event.Succeeded {
+		new_status = "success"
+	}
+
+	_, err := r.db.ExecContext(ctx,
+		``)
+}
+
+func (r *Repository) GetDeliveryState
