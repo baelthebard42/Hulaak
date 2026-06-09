@@ -10,16 +10,10 @@ import (
 	"time"
 
 	"github.com/avast/retry-go"
+	"github.com/baelthebard42/Hulaak/worker-destination/events"
+	worker_nats "github.com/baelthebard42/Hulaak/worker-destination/nats"
 	_ "github.com/lib/pq"
 )
-
-type WebhookDetails struct {
-	Delivery_id  string          `json:"delivery_id"`
-	Event_type   string          `json:"event_type"`
-	Event_source string          `json:"event_source"`
-	Endpoint     string          `json:"endpoint"`
-	Payload      json.RawMessage `json:"payload"`
-}
 
 func NewPostgres(dsn string) (*sql.DB, error) {
 	db, err := sql.Open("postgres", dsn)
@@ -127,7 +121,7 @@ func NewDBConnection(connection_string string) (*sql.DB, error) {
 
 // }
 
-func SendWebhook(webhook WebhookDetails) error {
+func SendWebhook(webhook events.WebhookReceiveEvent) error {
 
 	payload, err := json.Marshal(webhook)
 
@@ -163,5 +157,11 @@ func SendWebhook(webhook WebhookDetails) error {
 	}
 
 	return nil
+
+}
+
+func PublishSuccess(webhook events.WebhookReceiveEvent, nats *worker_nats.NATS) error {
+
+	err := nats.PublishEvent("webhook.delivery.state")
 
 }

@@ -5,8 +5,8 @@ import (
 	"log"
 
 	"github.com/baelthebard42/Hulaak/worker-destination/config"
+	"github.com/baelthebard42/Hulaak/worker-destination/events"
 	worker_nats "github.com/baelthebard42/Hulaak/worker-destination/nats"
-	"github.com/baelthebard42/Hulaak/worker-destination/utils"
 )
 
 func main() {
@@ -22,7 +22,7 @@ func main() {
 		return
 	}
 
-	sub, err := NATS.SubscribeWithDurableConsumer("webhook_events", "worker-destination", "DELIVERIES")
+	sub, err := NATS.SubscribeWithDurableConsumer("webhook.delivery", "worker-destination", "DELIVERIES")
 
 	if err != nil {
 		log.Println("error subscribing to events: %v", err)
@@ -41,7 +41,7 @@ func main() {
 		for _, msg := range msgs {
 			log.Println("Received delivery event: %v", string(msg.Data))
 
-			var webhook utils.WebhookDetails
+			var webhook events.WebhookReceiveEvent
 
 			err := json.Unmarshal(msg.Data, &webhook)
 

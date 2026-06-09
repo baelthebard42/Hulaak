@@ -20,7 +20,7 @@ func NewRunner(repo *outbox.Repository, nats_conn *control_nats.NATS) *Runner {
 	return &Runner{repo: repo, nats: nats_conn}
 }
 
-func (r *Runner) processJob(ctx context.Context, job outbox.WebhookDetails) {
+func (r *Runner) processJob(ctx context.Context, job control_nats.WebhookDeliveryEvent) {
 
 	job_json, err := json.Marshal(job)
 
@@ -30,7 +30,7 @@ func (r *Runner) processJob(ctx context.Context, job outbox.WebhookDetails) {
 		log.Println("Error converting webhook data to json: %v", err)
 	}
 
-	err = r.nats.PublishEvent("webhook_event", job_json)
+	err = r.nats.PublishEvent("webhook.delivery", job_json)
 
 	if err != nil {
 		log.Fatalln("Error sending outbox event to NATS: %v", err)

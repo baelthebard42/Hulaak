@@ -4,6 +4,8 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+
+	control_nats "github.com/baelthebard42/Hulaak/control/internal/nats"
 )
 
 type Repository struct {
@@ -14,15 +16,7 @@ func NewRepository(db *sql.DB) *Repository {
 	return &Repository{db: db}
 }
 
-type WebhookDetails struct {
-	Delivery_id  string          `json:"delivery_id"`
-	Event_type   string          `json:"event_type"`
-	Event_source string          `json:"event_source"`
-	Endpoint     string          `json:"endpoint"`
-	Payload      json.RawMessage `json:"payload"`
-}
-
-func (r *Repository) ClaimOutboxBatch(ctx context.Context, batch_size int) ([]WebhookDetails, error) {
+func (r *Repository) ClaimOutboxBatch(ctx context.Context, batch_size int) ([]control_nats.WebhookDeliveryEvent, error) {
 	tx, err := r.db.Begin()
 	if err != nil {
 		return nil, err
@@ -49,7 +43,7 @@ func (r *Repository) ClaimOutboxBatch(ctx context.Context, batch_size int) ([]We
 	}
 	defer rows.Close()
 
-	var deliveries []WebhookDetails
+	var deliveries []control_nats.WebhookDeliveryEvent
 
 	for rows.Next() {
 		var deliveryID, endpoint, event_source, event_type string
@@ -57,7 +51,7 @@ func (r *Repository) ClaimOutboxBatch(ctx context.Context, batch_size int) ([]We
 		if err := rows.Scan(&deliveryID, &endpoint, &event_source, &event_type, &payload); err != nil {
 			return nil, err
 		}
-		deliveries = append(deliveries, WebhookDetails{
+		deliveries = append(deliveries, control_nats.WebhookDeliveryEvent{
 			Delivery_id:  deliveryID,
 			Endpoint:     endpoint,
 			Event_source: event_source,
