@@ -160,8 +160,28 @@ func SendWebhook(webhook events.WebhookReceiveEvent) error {
 
 }
 
-func PublishSuccess(webhook events.WebhookReceiveEvent, nats *worker_nats.NATS) error {
+func PublishDeliveryState(webhook events.WebhookReceiveEvent, nats *worker_nats.NATS, success bool) error {
 
-	err := nats.PublishEvent("webhook.delivery.state")
+	var event events.DeliveryResultEvent
+
+	event.Delivery_id = webhook.Delivery_id
+	event.Succeeded = success
+
+	payload, err := json.Marshal(event)
+
+	if err != nil {
+		log.Println("Error marshalling delivery state event: ", err)
+		return err
+
+	}
+
+	err = nats.PublishEvent("webhook.delivery.state", payload)
+
+	if err != nil {
+		log.Println("Error publishing delivery state event: ", err)
+
+	}
+
+	return err
 
 }
