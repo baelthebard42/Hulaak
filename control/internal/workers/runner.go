@@ -66,7 +66,7 @@ func (r *Runner) processBatch(ctx context.Context, batch_size int) {
 }
 
 func (r *Runner) Run(ctx context.Context) {
-	ticker := time.NewTicker(time.Second) // ticker is a channel that receives a value every second
+	ticker := time.NewTicker(time.Second) // ticker isa channel that receives a value every second
 
 	defer ticker.Stop()
 

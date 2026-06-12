@@ -160,7 +160,7 @@ func SendWebhook(webhook worker_nats.WebhookReceiveEvent) error {
 
 }
 
-func PublishDeliveryState(webhook worker_nats.WebhookReceiveEvent, nats *worker_nats.NATS, last_attempt_at string, last_error error) error {
+func PublishDeliveryState(webhook worker_nats.WebhookReceiveEvent, nats *worker_nats.NATS, last_attempt_at time.Time, last_error error) error {
 
 	var event worker_nats.DeliveryResultEvent
 

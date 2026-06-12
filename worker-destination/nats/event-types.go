@@ -1,6 +1,9 @@
 package worker_nats
 
-import "encoding/json"
+import (
+	"encoding/json"
+	"time"
+)
 
 type WebhookReceiveEvent struct {
 	Delivery_id  string          `json:"delivery_id"`
@@ -11,8 +14,8 @@ type WebhookReceiveEvent struct {
 }
 
 type DeliveryResultEvent struct {
-	Delivery_id   string `json:"delivery_id"`
-	Succeeded     bool   `json:"succeeded"`
-	Last_attempt  string `json:"last_attempt"`
-	Error_message string `json:"error_message"`
+	Delivery_id   string    `json:"delivery_id"`
+	Succeeded     bool      `json:"succeeded"`
+	Last_attempt  time.Time `json:"last_attempt"`
+	Error_message string    `json:"error_message"`
 }

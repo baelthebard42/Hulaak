@@ -5,10 +5,19 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"time"
 
 	control_nats "github.com/baelthebard42/Hulaak/control/internal/nats"
 	"github.com/google/uuid"
 )
+
+type DeliveryState struct {
+	Delivery_id     string
+	Num_attempts    int
+	Last_attempt_at time.Time
+	Status          string
+	Last_error      string
+}
 
 type Repository struct {
 	db *sql.DB
@@ -128,33 +137,59 @@ func (r *Repository) PostEndpoint(ctx context.Context, destination_ref string, e
 }
 
 func (r *Repository) UpdateAfterEvent(ctx context.Context, event control_nats.DeliveryResultEvent) error {
+	query := `
+		UPDATE delivery
+		SET 
+			status = COALESCE($1, status),
+			last_error = $2,
+			last_attempt_at = $3,
+			num_attempts = num_attempts + 1
+		WHERE id = $4
+	`
 
-	var status, last_attempt_at string
-	var num_attempts int
-	var new_status string
+	var (
+		status    *string
+		lastError string
+	)
 
-	err := r.db.QueryRowContext(ctx, `
-	SELECT status, num_attempts, last_attempt_at FROM delivery
-	WHERE id=$1 
-	`, event.Delivery_id).Scan(&status, &num_attempts, &last_attempt_at)
+	if event.Succeeded {
+		s := "success"
+		status = &s
+		lastError = ""
+	} else {
+		status = nil
+		lastError = event.Error_message
+	}
 
+	_, err := r.db.ExecContext(
+		ctx,
+		query,
+		status,
+		lastError,
+		event.Last_attempt,
+		event.Delivery_id,
+	)
 	if err != nil {
-		log.Println("Error updating delivery: ", err)
+		log.Println("error updating delivery table:", err)
 		return err
 	}
 
-	if status == "success" { // two more checks to be added here: num attempts >=  event.num_attempts and last attempt > events.last_attempt
-		log.Println("Duplicate event detected, dropping it..")
-		return fmt.Errorf("Duplicate event detected")
-
-	}
-
-	if event.Succeeded {
-		new_status = "success"
-	}
-
-	_, err := r.db.ExecContext(ctx,
-		``)
+	return nil
 }
+func (r *Repository) GetDeliveryStateFromDID(ctx context.Context, delivery_id string) (DeliveryState, error) {
 
-func (r *Repository) GetDeliveryState
+	var delivery_state DeliveryState
+
+	err := r.db.QueryRowContext(ctx, `
+	SELECT status, num_attempts, last_attempt_at, last_error FROM delivery
+	WHERE id=$1
+	`, delivery_id).Scan(&delivery_state.Status, &delivery_state.Num_attempts, &delivery_state.Last_attempt_at, &delivery_state.Last_error)
+
+	if err != nil {
+		log.Println("Error fetching delivery details: ", err)
+		return DeliveryState{}, err
+	}
+
+	return delivery_state, nil
+
+}

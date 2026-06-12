@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/baelthebard42/Hulaak/worker-destination/config"
-	"github.com/baelthebard42/Hulaak/worker-destination/events"
+
 	worker_nats "github.com/baelthebard42/Hulaak/worker-destination/nats"
 	"github.com/baelthebard42/Hulaak/worker-destination/utils"
 )
@@ -43,7 +43,7 @@ func main() {
 		for _, msg := range msgs {
 			log.Println("Received delivery event: %v", string(msg.Data))
 
-			var webhook events.WebhookReceiveEvent
+			var webhook worker_nats.WebhookReceiveEvent
 
 			err := json.Unmarshal(msg.Data, &webhook)
 
@@ -59,12 +59,9 @@ func main() {
 
 			last_attempt_at := time.Now()
 
-			// Replicates standard PostgreSQL timestamp format (so compatible with other columns denoting time)
-			last_attempt_at_str := last_attempt_at.Format("2006-01-02 15:04:05.000000-07")
-
 			delivery_error := utils.SendWebhook(webhook) // sends webhook to destination
 
-			err = utils.PublishDeliveryState(webhook, NATS, last_attempt_at_str, delivery_error) //need to make this robust (some mechanism to ensure this is sent to NATS later even if the NATS service is down)
+			err = utils.PublishDeliveryState(webhook, NATS, last_attempt_at, delivery_error) //need to make this robust (some mechanism to ensure this is sent to NATS later even if the NATS service is down)
 			if err != nil {
 				log.Println("error updating delivery status: %v", err)
 			}
