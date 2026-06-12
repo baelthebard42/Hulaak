@@ -1,15 +1,18 @@
 # Hulaak
 
-Hulaak is an event-driven, authenticated webhook delivery & retry system built on Go. It ingests events from your applications and delivers them to the required destination with **at-least-once** delivery. It pairs Go's concurrency with NATS JetStream's persistence and backoff-based redelivery to ensure webhooks are retried until the destination receives them. The system is split into **two deployable services** that communicate exclusively over NATS JetStream, and is made ready and tested to run on a Kubernetes cluster. Check out the `infra/` directory for details regarding the Kubernetes setup.
+Hulaak is an event-driven, authenticated webhook delivery & retry system built on Go. It ingests events from your applications and delivers them to the required destination with **at-least-once** delivery guarentee. It pairs Go's concurrency with NATS JetStream's persistence and backoff-based redelivery to ensure webhooks are retried until the destination receives them. The system is split into **two deployable services** that communicate exclusively over NATS JetStream, and is made ready and tested to run on a Kubernetes cluster. Check out the `infra/` directory for details regarding the Kubernetes setup.
 
 
 ## Architecture / Flow of Events
 
 Hulaak is composed of two deployable services backed by **PostgreSQL** (state) and **NATS JetStream** (messaging). All cross-service communication happens through NATS — there are no direct service-to-service calls and only the Control plane talks to the database.
 
+<img width="641" height="669" alt="hulaak_architecture drawio" src="https://github.com/user-attachments/assets/dabceeb9-c4f5-4d30-8adc-faf479786f66" />
+
+
 1. **Control Plane** (`control/`): The stateful brain of the system. It runs three concurrent components inside a single process:
    - **HTTP API server** — ingests and authenticates incoming events, registers destination endpoints, and persists everything to Postgres. On each accepted event it writes the `events`, `delivery`, and `outbox` rows in a single transaction (the *transactional outbox* pattern).
-   - **Runner** (`internal/workers/runner.go`) — a background goroutine that continuously claims fresh rows from the `outbox` table (`FOR UPDATE SKIP LOCKED`), publishes them to NATS, and deletes the claimed rows. This is the publisher role that used to live in a separate "Worker-NATS" service; it is now an in-process worker.
+   - **Runner** (`internal/workers/runner.go`) — a background goroutine that continuously claims fresh rows from the `outbox` table (`FOR UPDATE SKIP LOCKED`), publishes them to NATS, and deletes the claimed rows. 
    - **Listener** (`internal/workers/listener.go`) — a background goroutine that subscribes to delivery-result events coming back from Worker-Destination and updates the `delivery` table (attempts, last error, last attempt time, status), with duplicate-event detection.
 
 2. **Worker-Destination** (`worker-destination/`): A stateless delivery worker. It pulls delivery payloads from NATS, performs the outbound HTTP `POST` to the customer's endpoint, and **publishes the result back to NATS** rather than touching the database directly. Because it holds no state, its replica count can be scaled up freely with load.
@@ -26,7 +29,7 @@ A single JetStream stream named **`DELIVERIES`** (subjects `webhook.>`, file sto
 This gives a closed feedback loop: Control hands off a delivery, Worker-Destination attempts it and reports back, and Control records the outcome — keeping the delivery worker completely free of database access.
 
 
-![hulaak (1)](https://github.com/user-attachments/assets/bc948fec-5911-492a-b4bf-d8d4e002c9a3)
+
 
 
 ## Retry Mechanism
