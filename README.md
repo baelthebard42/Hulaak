@@ -1,17 +1,29 @@
 # Hulaak
 
-Hulaak is an event-driven, authenticated webhook delivery & retry system built on Go. It ingests the events from your applications and sends it to the required destination with **at-least-once** delivery. It makes use of Go's seamless networking with NATS JetStream's persistence, exponential backoff time to ensure the webhooks are retried till the destination receives it. This entire system, comprising of three separate services, is made ready and is well tested to run on a Kubernetes cluster. Check out the infra directory for details regarding the Kubernetes setup.
+Hulaak is an event-driven, authenticated webhook delivery & retry system built on Go. It ingests events from your applications and delivers them to the required destination with **at-least-once** delivery. It pairs Go's concurrency with NATS JetStream's persistence and backoff-based redelivery to ensure webhooks are retried until the destination receives them. The system is split into **two deployable services** that communicate exclusively over NATS JetStream, and is made ready and tested to run on a Kubernetes cluster. Check out the `infra/` directory for details regarding the Kubernetes setup.
 
 
 ## Architecture / Flow of Events
 
-Hulaak is made up of three separate services that have a well defined role to play for the overall flow.
+Hulaak is composed of two deployable services backed by **PostgreSQL** (state) and **NATS JetStream** (messaging). All cross-service communication happens through NATS — there are no direct service-to-service calls and only the Control plane talks to the database.
 
-1. **Control Plane**: This service is responsible for ingesting and authenticating the incoming events, persisting them to necessary tables, sending back responses to client and maintaining the outbox table, where the fresh events are kept for workers to fetch from.
+1. **Control Plane** (`control/`): The stateful brain of the system. It runs three concurrent components inside a single process:
+   - **HTTP API server** — ingests and authenticates incoming events, registers destination endpoints, and persists everything to Postgres. On each accepted event it writes the `events`, `delivery`, and `outbox` rows in a single transaction (the *transactional outbox* pattern).
+   - **Runner** (`internal/workers/runner.go`) — a background goroutine that continuously claims fresh rows from the `outbox` table (`FOR UPDATE SKIP LOCKED`), publishes them to NATS, and deletes the claimed rows. This is the publisher role that used to live in a separate "Worker-NATS" service; it is now an in-process worker.
+   - **Listener** (`internal/workers/listener.go`) — a background goroutine that subscribes to delivery-result events coming back from Worker-Destination and updates the `delivery` table (attempts, last error, last attempt time, status), with duplicate-event detection.
 
-2. **Worker-NATS**: This is an independent worker that continuously fetches deliveries from the outbox table, processes it and sends the delivery details to Worker-Destination through NATS JetStream. Number of instances of this worker can be increased as per the load.
+2. **Worker-Destination** (`worker-destination/`): A stateless delivery worker. It pulls delivery payloads from NATS, performs the outbound HTTP `POST` to the customer's endpoint, and **publishes the result back to NATS** rather than touching the database directly. Because it holds no state, its replica count can be scaled up freely with load.
 
-3. **Worker-Destination**: This is another independent worker that receives delivery details from Worker-NATS and sends it to the required destination, and performs retry if needed. This is also responsible for updating the status of each  event delivery. Again, the number of instances of this worker can too be increased as per load.
+### Messaging model
+
+A single JetStream stream named **`DELIVERIES`** (subjects `webhook.>`, file storage) carries two subjects, each consumed by its own durable pull consumer:
+
+| Subject | Direction | Producer | Consumer (durable) |
+|---|---|---|---|
+| `webhook.delivery.payload` | Control → Worker-Destination | Runner | `worker-destination` |
+| `webhook.delivery.state` | Worker-Destination → Control | Worker-Destination | `control` |
+
+This gives a closed feedback loop: Control hands off a delivery, Worker-Destination attempts it and reports back, and Control records the outcome — keeping the delivery worker completely free of database access.
 
 
 ![hulaak (1)](https://github.com/user-attachments/assets/bc948fec-5911-492a-b4bf-d8d4e002c9a3)
@@ -19,36 +31,51 @@ Hulaak is made up of three separate services that have a well defined role to pl
 
 ## Retry Mechanism
 
-The retry mechanism relies on NATS JetStream's persistence and resending features. 
+The retry mechanism relies on NATS JetStream's persistence and redelivery features. The `worker-destination` durable consumer is configured with explicit acknowledgements, `MaxDeliver = 10`, and a backoff schedule of `1m, 2m, 4m, 8m, 16m, 30m, 60m`.
 
 ### Success Case 
 
 
 ![retry_sucess](https://github.com/user-attachments/assets/8d1ccd78-3739-484f-a788-9c33f15a7b99)
 
-Specifically, for each event the JetStream sends to Worker-Destination, the Worker-Destination acknowledges it back to NATS if and only if the delivery to destination is successful. In that case, the status of the delivery is set to 'successful', story ends.
+For each payload JetStream delivers to Worker-Destination, the worker acknowledges it back to NATS if and only if the outbound delivery succeeded. It also publishes a `webhook.delivery.state` event so the Control plane's Listener marks the `delivery` row as `success`. Story ends.
 
 ### Failure Case 
 
 ![retry](https://github.com/user-attachments/assets/071c5a88-56e6-44af-b3a9-f21935e56a9a)
 
 
-If the delivery for an event is unsuccessful, the Worker-Destination sends back no acknowledgement for the event. In that case, NATS JetStream is configured to resend the event to Worker-Destination on an exponential backoff basis after which the worker retries the delivery. Meaning for each successive retry, the time to try again increases exponentially from previous.
+If the delivery fails, Worker-Destination publishes a failure result (consumed by Control to bump `num_attempts` and record `last_error`) and **does not acknowledge** the original payload message. JetStream then redelivers the message after the next backoff interval, and the worker tries again — so the wait between attempts grows toward the 60-minute ceiling.
 
-Note that to ensure there is no perpetual resending of events, a mechanism to stop the retry after a MAXIMUM_RETRIES is implemented. After MAXIMUM_RETRIES, the delivery row is marked as 'failed' and is move to a Dead Letter Queue (DLQ) for manual inspection.
+To avoid perpetual redelivery, the consumer's `MaxDeliver` (10) caps the number of attempts. Once that limit is reached, JetStream stops redelivering the message; the `delivery` row retains its full attempt history (`num_attempts`, `last_error`, `last_attempt_at`) for inspection.
+
+> **Note:** An explicit Dead Letter Queue (DLQ) and an automatic `failed`-status transition after the max attempts are not yet implemented in the current code — they are on the roadmap. Today, exhausted deliveries simply stop being redelivered while their history remains in the `delivery` table.
+
+
+## Data Model
+
+All tables live in the Control plane's Postgres database (see `control/database/migrations/`):
+
+- **`client_user`** — registered API accounts (username, email, hashed password).
+- **`events`** — every ingested event (type, source user, destination reference, JSON payload).
+- **`endpoints`** — the target webhook URL registered for a given `(destination_reference, event_type)` pair.
+- **`delivery`** — one row per delivery attempt lifecycle: `status` (`pending`/`success`/`failed`), `num_attempts`, `last_error`, `last_attempt_at`. This is the source of truth the Listener updates.
+- **`outbox`** — the transactional outbox the Runner drains; rows move from `unprocessed` → `processing` and are deleted once published.
 
 
 ## Features
 
-- **Separated concerns**: Separate services to handle event ingestion and deliveries (check out the system architecture below!)
+- **Separated concerns**: A stateful Control plane (ingestion + state) and a stateless delivery worker, decoupled entirely through NATS.
 
-- **At-least-once delivery**: Guarentee that the destination will receive the webhooks at least once, given it is setup to listen to them correctly.
+- **At-least-once delivery**: Guarantees the destination will receive each webhook at least once, given it is set up to listen correctly.
 
-- **Status Tracking**: The system exposes necessary details required for the client to track the status of their events including number of attempts, last retry time, last error and so on.
+- **Transactional outbox**: Events and their outbox entries are written in a single Postgres transaction, so an accepted event is never lost between ingestion and publishing.
 
-- **Exponential backoff retries** : The time to wait before retrying increases exponentially on each retry, making it convenient if your destination system shuts for a brief period of time.
+- **Status Tracking**: The `delivery` table exposes the details needed to track each event — number of attempts, last attempt time, last error, and current status.
 
-- **Scalability**: The workers for event processing and deliveries can be increased easily if needed in context of large number of incoming events.
+- **Backoff-based retries**: JetStream redelivers failed messages on an increasing backoff schedule, which is convenient when a destination is briefly unavailable.
+
+- **Scalability**: Worker-Destination is stateless, so its replica count can be increased freely to absorb large volumes of deliveries.
 
 
 
@@ -74,6 +101,18 @@ Token validation checks:
 ---
 
 ## Endpoint Reference
+
+### 0. Health Check
+
+#### `GET /healthz`
+
+Description:
+Liveness/readiness probe for the Control plane.
+
+Authentication:
+Not required.
+
+---
 
 ### 1. Create Account
 
@@ -273,8 +312,23 @@ All service calls are wrapped in 5 second context timeout.
 
 | Feature | Description |
 |---|---|
-| Architecture | Handler → Service → Database |
-| Event Model | Stored event ingestion for webhook delivery |
+| Services | Control plane (stateful) + Worker-Destination (stateless) |
+| API layering | Handler → Service → Repository → Postgres |
+| Messaging | NATS JetStream, single `DELIVERIES` stream, two durable pull consumers |
+| Event Model | Transactional outbox: `events` + `delivery` + `outbox` written atomically |
+| Delivery feedback | Worker-Destination reports results over NATS; Control's Listener updates `delivery` |
 | Auth Model | Cookie-based JWT authentication |
-| Payload Type | Raw JSON payload storage |
-| Processing Style | Likely asynchronous downstream worker delivery |
+| Payload Type | Raw JSON payload storage (`JSONB`) |
+| Processing Style | Asynchronous: outbox publisher (Runner) + delivery worker + result listener |
+| Delivery guarantee | At-least-once, with `MaxDeliver = 10` and backoff redelivery |
+
+
+## Deployment
+
+Both services are containerized (multi-stage builds → distroless images) and deployed to Kubernetes via [Skaffold](skaffold.yaml). The manifests in [infra/k8s/](infra/k8s/) define:
+
+- `nats` — a single-replica JetStream `StatefulSet` with a 5Gi persistent volume, plus a headless service and a `nats-client` service on port `4222`.
+- `control-depl` — the Control plane `Deployment` + a `NodePort` service (`30008`), wired to `JWT_SECRET`, `DATABASE_URL`, and `NATS_URL`.
+- `worker-destination-depl` — the Worker-Destination `Deployment` + a `NodePort` service (`30009`), wired to `DATABASE_URL` and `NATS_URL`.
+
+Database migrations are managed with [`sql-migrate`](run.md) (`sql-migrate up`). Required environment variables: `DATABASE_URL`, `JWT_SECRET` (Control only), and `NATS_URL`.
