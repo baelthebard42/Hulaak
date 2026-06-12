@@ -7,7 +7,8 @@ Hulaak is an event-driven, authenticated webhook delivery & retry system built o
 
 Hulaak is composed of two deployable services backed by **PostgreSQL** (state) and **NATS JetStream** (messaging). All cross-service communication happens through NATS — there are no direct service-to-service calls and only the Control plane talks to the database.
 
-<img width="641" height="669" alt="hulaak_architecture drawio" src="https://github.com/user-attachments/assets/dabceeb9-c4f5-4d30-8adc-faf479786f66" />
+<img width="641" height="669" alt="hulaak_architecture drawio (1)" src="https://github.com/user-attachments/assets/f3269af4-66b8-4aac-b774-6355b1460cec" />
+
 
 
 1. **Control Plane** (`control/`): The stateful brain of the system. It runs three concurrent components inside a single process:
