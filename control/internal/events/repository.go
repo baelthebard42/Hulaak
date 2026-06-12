@@ -143,7 +143,7 @@ func (r *Repository) UpdateAfterEvent(ctx context.Context, event control_nats.De
 			status = COALESCE($1, status),
 			last_error = $2,
 			last_attempt_at = $3,
-			num_attempts = num_attempts + 1
+			num_attempts = COALESCE(num_attempts, 0) + 1
 		WHERE id = $4
 	`
 
@@ -181,7 +181,7 @@ func (r *Repository) GetDeliveryStateFromDID(ctx context.Context, delivery_id st
 	var delivery_state DeliveryState
 
 	err := r.db.QueryRowContext(ctx, `
-	SELECT status, num_attempts, last_attempt_at, last_error FROM delivery
+	SELECT status, COALESCE(num_attempts, 0), COALESCE(last_attempt_at, '1970-01-01'::timestamp), COALESCE(last_error, '') AS last_error FROM delivery
 	WHERE id=$1
 	`, delivery_id).Scan(&delivery_state.Status, &delivery_state.Num_attempts, &delivery_state.Last_attempt_at, &delivery_state.Last_error)
 

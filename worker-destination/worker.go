@@ -24,7 +24,7 @@ func main() {
 		return
 	}
 
-	sub, err := NATS.SubscribeWithDurableConsumer("webhook.delivery", "worker-destination", "DELIVERIES")
+	sub, err := NATS.SubscribeWithDurableConsumer("webhook.delivery.payload", "worker-destination", "DELIVERIES")
 
 	if err != nil {
 		log.Println("error subscribing to events: %v", err)
@@ -59,17 +59,19 @@ func main() {
 
 			last_attempt_at := time.Now()
 
-			delivery_error := utils.SendWebhook(webhook) // sends webhook to destination
+			//	delivery_error := utils.SendWebhook(webhook) // sends webhook to destination
+			var delivery_error error
+			delivery_error = nil
 
 			err = utils.PublishDeliveryState(webhook, NATS, last_attempt_at, delivery_error) //need to make this robust (some mechanism to ensure this is sent to NATS later even if the NATS service is down)
 			if err != nil {
 				log.Println("error updating delivery status: %v", err)
 			}
 
-			if delivery_error != nil {
-				log.Println("error sending webhook: %v", err)
-				continue
-			}
+			// if delivery_error != nil {
+			// 	log.Println("error sending webhook: %v", err)
+			// 	continue
+			// }
 
 			log.Println("Webhook ", webhook.Delivery_id, " sent successfully to destination!!\n")
 

@@ -167,7 +167,12 @@ func PublishDeliveryState(webhook worker_nats.WebhookReceiveEvent, nats *worker_
 	event.Delivery_id = webhook.Delivery_id
 	event.Succeeded = last_error == nil
 	event.Last_attempt = last_attempt_at
-	event.Error_message = last_error.Error()
+
+	if last_error != nil {
+		event.Error_message = last_error.Error()
+	} else {
+		event.Error_message = ""
+	}
 
 	payload, err := json.Marshal(event)
 
@@ -176,6 +181,8 @@ func PublishDeliveryState(webhook worker_nats.WebhookReceiveEvent, nats *worker_
 		return err
 
 	}
+
+	log.Println("Publishing event: ", string(payload))
 
 	err = nats.PublishEvent("webhook.delivery.state", payload)
 

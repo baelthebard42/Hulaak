@@ -100,32 +100,41 @@ func (n *NATS) EnsureStream(streamName string) error {
 	return err
 }
 
-func (n *NATS) EnsureConsumer(streamName string, consumerName string) error {
+func (n *NATS) EnsureConsumer(streamName string, consumerName string, filterSubject string) error {
 	js, err := n.js()
-	_, err = js.ConsumerInfo(streamName, consumerName)
+	info, err := js.ConsumerInfo(streamName, consumerName)
 	if err == nil {
-		return nil
-	}
-
-	if err == nats.ErrConsumerNotFound {
-		log.Println("Consumer not %v found, adding..", streamName)
-		_, err = js.AddConsumer(streamName, &nats.ConsumerConfig{
-			Durable:    consumerName,
-			AckPolicy:  nats.AckExplicitPolicy,
-			MaxDeliver: 10,
-			BackOff: []time.Duration{
-				1 * time.Minute,
-				2 * time.Minute,
-				4 * time.Minute,
-				8 * time.Minute,
-				16 * time.Minute,
-				30 * time.Minute,
-				60 * time.Minute,
-			},
-		})
+		// Consumer already exists. If its filter drifted from what we want
+		// (e.g. created by an older build with no FilterSubject), recreate it
+		// so it stops receiving subjects it shouldn't.
+		if info.Config.FilterSubject != filterSubject {
+			log.Printf("Consumer %v has filter %q, want %q; recreating", consumerName, info.Config.FilterSubject, filterSubject)
+			if err = js.DeleteConsumer(streamName, consumerName); err != nil {
+				return err
+			}
+		} else {
+			return nil
+		}
+	} else if err != nats.ErrConsumerNotFound {
 		return err
 	}
 
+	log.Printf("Adding consumer %v with filter %q", consumerName, filterSubject)
+	_, err = js.AddConsumer(streamName, &nats.ConsumerConfig{
+		Durable:       consumerName,
+		FilterSubject: filterSubject, // filter messages only for this subject
+		AckPolicy:     nats.AckExplicitPolicy,
+		MaxDeliver:    10,
+		BackOff: []time.Duration{
+			1 * time.Minute,
+			2 * time.Minute,
+			4 * time.Minute,
+			8 * time.Minute,
+			16 * time.Minute,
+			30 * time.Minute,
+			60 * time.Minute,
+		},
+	})
 	return err
 }
 
@@ -139,7 +148,7 @@ func (n *NATS) SubscribeWithDurableConsumer(subject string, durableConsumerName 
 		return nil, err
 	}
 
-	err = n.EnsureConsumer(streamName, durableConsumerName)
+	err = n.EnsureConsumer(streamName, durableConsumerName, subject)
 
 	if err != nil {
 		log.Fatalln("Error ensuring consumer: %v", err)

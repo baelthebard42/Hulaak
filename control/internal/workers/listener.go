@@ -3,6 +3,7 @@ package workers
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"time"
@@ -29,11 +30,13 @@ func (l *Listener) HandleDeliveryEvent(ctx context.Context, event control_nats.D
 		return err
 	}
 
-	if deliveryState.Status == "success" || deliveryState.Status == "failed" || event.Last_attempt.Before(deliveryState.Last_attempt_at) {
+	if deliveryState.Status == "success" || deliveryState.Status == "failed" || !event.Last_attempt.After(deliveryState.Last_attempt_at) {
 
 		log.Println("Duplicate event detected...dropping the event.", deliveryState)
 		return fmt.Errorf("Duplicate event detected.")
 	}
+
+	log.Println("Received event for update: (id, success): ", event.Delivery_id, event.Succeeded)
 
 	err = l.repo.UpdateAfterEvent(ctx, event)
 
@@ -46,6 +49,7 @@ func (l *Listener) HandleDeliveryEvent(ctx context.Context, event control_nats.D
 }
 
 func (l *Listener) Run(ctx context.Context) {
+	var ErrDuplicateEvent = errors.New("duplicate event detected")
 	ticker := time.NewTicker(time.Second)
 
 	defer ticker.Stop()
@@ -72,7 +76,7 @@ func (l *Listener) Run(ctx context.Context) {
 				continue
 			}
 			for _, msg := range msgs {
-				log.Println("Received event: ", string(msg.Data))
+				log.Println("Received eventkkkk: ", string(msg.Data))
 				var event control_nats.DeliveryResultEvent
 				err := json.Unmarshal(msg.Data, &event)
 
@@ -81,12 +85,12 @@ func (l *Listener) Run(ctx context.Context) {
 					continue
 				}
 
-				err = l.repo.UpdateAfterEvent(ctx, event)
-
-				if err != nil {
-					log.Println("error updating delivery table on received event: %v", err)
-					continue
+				err = l.HandleDeliveryEvent(ctx, event)
+				if err != nil && !errors.Is(err, ErrDuplicateEvent) {
+					log.Println("error handling received event:", err)
+					continue // no ack → redeliver & retry
 				}
+				msg.Ack() // ack on success OR duplicate
 
 			}
 

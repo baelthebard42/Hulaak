@@ -19,7 +19,7 @@ import (
 	"github.com/baelthebard42/Hulaak/control/internal/http/routes"
 	control_nats "github.com/baelthebard42/Hulaak/control/internal/nats"
 	"github.com/baelthebard42/Hulaak/control/internal/outbox"
-	"github.com/baelthebard42/Hulaak/control/internal/worker"
+	"github.com/baelthebard42/Hulaak/control/internal/workers"
 )
 
 func main() {
@@ -83,7 +83,11 @@ func main() {
 	}()
 
 	go func() {
-		worker.NewRunner(outboxRepository, NATS).Run(ctx)
+		workers.NewRunner(outboxRepository, NATS).Run(ctx)
+	}()
+
+	go func() {
+		workers.NewListener(eventRepository, NATS).Run(ctx)
 	}()
 
 	// when kubernetes deletes the pod, it sends SIGTERM which is pushed to sigch

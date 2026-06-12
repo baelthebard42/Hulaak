@@ -30,7 +30,9 @@ func (r *Runner) processJob(ctx context.Context, job control_nats.WebhookDeliver
 		log.Println("Error converting webhook data to json: %v", err)
 	}
 
-	err = r.nats.PublishEvent("webhook.delivery", job_json)
+	log.Println("Publishing event: ", string(job_json))
+
+	err = r.nats.PublishEvent("webhook.delivery.payload", job_json)
 
 	if err != nil {
 		log.Fatalln("Error sending outbox event to NATS: %v", err)
